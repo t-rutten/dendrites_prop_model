@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 from itertools import combinations
 
 from pudb import set_trace
@@ -37,8 +38,8 @@ class Neuron:
 
         for child in [1, 2, 3, 4, 5]:
             calcium[child] = calcium[parents[child]] + np.random.randn() \
-                * self.true_params['lambs'][
-                    self.lambs_ids[(child, parents[child])]]
+                * np.sqrt(self.true_params['lambs'][
+                    self.lambs_ids[(child, parents[child])]])
 
         data = [None] * len(self.graph)
         for oi, obs in enumerate(self.observed):
@@ -47,7 +48,7 @@ class Neuron:
             else:
                 data[oi] = (self.true_params['a'] * calcium[oi] +
                             self.true_params['b']) + np.random.randn() \
-                    * self.true_params['var_y']
+                    * np.sqrt(self.true_params['var_y'])
 
         return calcium, data
 
@@ -153,6 +154,7 @@ class Neuron:
                                        self.params['b']))**2 for c, y in
                                        zip(self.estimates, self.data) if
                                        not np.isnan(y)])
+
         self.params['var_y'] /= np.sum(self.observed)
 
         # Update all of our smoothing parameters
@@ -175,6 +177,27 @@ class Neuron:
                      li, l in enumerate(l_updates)]
 
         self.params['lambs'] = l_updates
+
+    def Log_Likelihood(self):
+
+        ll = 0
+        # Add prob of Ys P(Yi|Ci)
+        for i in xrange(len(self.data)):
+            if self.observed[i]:
+                ll += norm.logpdf(self.data[i], loc=self.params['a'] *
+                                  self.estimates[i] + self.params['b'],
+                                  scale=np.sqrt(self.params['var_y']))
+
+        # Add prob of Cs P(Ci, Cj)
+        for (i, j) in combinations(xrange(len(self.graph)), 2):
+            try:
+                l_id = self.lambs_ids[(i, j)]
+                ll += norm.logpdf(self.estimates[i] - self.estimates[j], loc=0,
+                                  scale=np.sqrt(self.params['lambs'][l_id]))
+            except KeyError:
+                pass
+
+        return ll
 # get index for obsereved variable
 # def _y(c):
 #   return c+n_nodes
@@ -189,10 +212,10 @@ if __name__ == '__main__':
     # neuron.E_step()
     # print neuron.estimates
     # print neuron.calcium
-    neuron.M_step()
-    print neuron.params
-    print neuron.true_params
-
+    # neuron.M_step()
+    # print neuron.params
+    # print neuron.true_params
+    print neuron.Log_Likelihood()
 # a function to generate data
 # passes the observations to GBP() which will contain everything
 # GBP() will repeatedly call the E step (message passing) and M step
