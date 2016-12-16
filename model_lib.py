@@ -9,14 +9,15 @@ class Neuron:
         self.graph = {0: [1], 1: [0, 2], 2: [1, 3, 4],
                       3: [2], 4: [2, 5], 5: [4]}
         self.observed = [True, False, True, True, True, True]
-        self.true_params = {'a': 1, 'b': 0, 'var_y': 1, 'lambs': [1, 2]}
+        self.true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
         self.lambs_ids = self.assign_lambdas([[0, 1, 2], [2, 3, 4, 5]])
         self.calcium, self.data = self.gen_toy_data()
 
         self.messages = {}
         self.root = 0
-        self.params = {'a': 1, 'b': 0, 'var_y': 1, 'lambs': [1, 2]}
-        self.estimates = [None] * len(self.graph)
+        self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
+        # self.estimates = [None] * len(self.graph)
+        self.estimates = self.calcium
 
     def assign_lambdas(self, groups):
         lambs_ids = {}
@@ -134,7 +135,8 @@ class Neuron:
         # Update all parameter estimates
 
         # Update gain a and offset b by regression LSE
-        C_mean = np.mean(self.estimates)
+        C_mean = np.mean([e for ie, e in enumerate(self.estimates) if
+                          not np.isnan(self.data[ie])])
         Y_mean = np.nanmean(self.data)
 
         # Exclude any nodes that were not observed
@@ -163,6 +165,8 @@ class Neuron:
                 l_updates[l_id] += (self.estimates[node_i] -
                                     self.estimates[node_j])**2
             except KeyError:
+                # Unconnected node pairs will not have a lambda id,
+                # just skip over these nodes
                 pass
 
         # Normalize by number of pairs with that lambda_id
@@ -182,11 +186,12 @@ class Neuron:
 
 if __name__ == '__main__':
     neuron = Neuron()
-    neuron.E_step()
-    print neuron.estimates
-    print neuron.calcium
+    # neuron.E_step()
+    # print neuron.estimates
+    # print neuron.calcium
     neuron.M_step()
     print neuron.params
+    print neuron.true_params
 
 # a function to generate data
 # passes the observations to GBP() which will contain everything
