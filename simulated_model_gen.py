@@ -10,7 +10,7 @@ class Node:
 		self.is_observation = is_observation
 
 
-def make_apical(graph, parents, num_nodes_bounds=[3,6]):
+def make_apical(graph, parents, num_nodes_bounds=[50,55]):
 	'''
 	generates nodes in axon
 	graph is list of adjacencies
@@ -37,7 +37,7 @@ def make_apical(graph, parents, num_nodes_bounds=[3,6]):
 		#add current node to nums_to_nodes_map
 		# nums_to_nodes_map[str(i)] = Node(str(i))
 
-def make_dendritic(graph, parents, num_branches_bounds=[2,3], branch_size_bounds=[1,3]):
+def make_dendritic(graph, parents, num_branches_bounds=[2,3], branch_size_bounds=[20,30]):
 	'''
 	generates dendritic branches
 	'''
