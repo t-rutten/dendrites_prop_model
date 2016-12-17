@@ -245,7 +245,7 @@ if __name__ == '__main__':
     graph, parents, lamb_group_ids = mod_gen.make_graph()
     observed = [True] * len(graph) 
     true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
-    neuron = Neuron(graph, observed, true_params, lamb_ids_groups, parents)
+    neuron = Neuron(graph, observed, true_params, lamb_group_ids, parents)
     neuron.EM()
 
     #neuron.E_step()
