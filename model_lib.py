@@ -224,12 +224,21 @@ class Neuron:
 if __name__ == '__main__':
     graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
     observed = [True, False, True, True, True, True]
-    true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
+    true_params = {'a': 1, 'b': 0, 'var_y': .01, 'lambs': [1, 1]}
     lambs_ids_groups = [[0, 1, 2], [2, 3, 4, 5]]
     parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
     neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
     neuron.EM()
-    
+
+    print("\n\n\n\n\n\n")
+
+    graph = {0:[1], 1:[0,2], 2:[1,3], 3:[2,4,7,9], 4:[3,5], 5:[4,6], 6:[5], 7:[3,8], 8:[7], 9:[3,10], 10:[9,11], 11:[10]}
+    observed = [True, True, False, True, False, True, True, False, True, True, False, True]
+    true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
+    lambs_ids_groups = [[0, 1, 2, 3], [3, 4, 5, 6, 7, 8, 9, 10, 11]]
+    parents = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:3, 8:7, 9:3, 10:9, 11:10}
+    neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
+    neuron.EM()
     #neuron.E_step()
     #print neuron.estimates
     #print neuron.calcium
