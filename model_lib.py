@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 from itertools import combinations
+import simulated_model_gen as mod_gen
 
 #from pudb import set_trace
 
@@ -239,6 +240,14 @@ if __name__ == '__main__':
     parents = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:3, 8:7, 9:3, 10:9, 11:10}
     neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
     neuron.EM()
+
+
+    graph, parents, lamb_group_ids = mod_gen.make_graph()
+    observed = [True] * len(graph) 
+    true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
+    neuron = Neuron(graph, observed, true_params, lamb_ids_groups, parents)
+    neuron.EM()
+
     #neuron.E_step()
     #print neuron.estimates
     #print neuron.calcium
