@@ -2,17 +2,16 @@ import numpy as np
 from scipy.stats import norm
 from itertools import combinations
 
-from pudb import set_trace
+#from pudb import set_trace
 
 
 class Neuron:
-    def __init__(self):
-        self.graph = {0: [1], 1: [0, 2], 2: [1, 3, 4],
-                      3: [2], 4: [2, 5], 5: [4]}
-        self.observed = [True, False, True, True, True, True]
-        self.true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
-        self.lambs_ids = self.assign_lambdas([[0, 1, 2], [2, 3, 4, 5]])
-        self.calcium, self.data = self.gen_toy_data()
+    def __init__(self, graph, observed, true_params, lambs_ids_groups, parents):
+        self.graph = graph
+        self.observed = observed
+        self.true_params = true_params
+        self.lambs_ids = self.assign_lambdas(lambs_ids_groups)
+        self.calcium, self.data = self.gen_toy_data(parents)
 
         self.messages = {}
         self.root = 0
@@ -29,14 +28,12 @@ class Neuron:
                         lambs_ids[(node, neighbor)] = gi
         return lambs_ids
 
-    def gen_toy_data(self):
+    def gen_toy_data(self, parents):
         calcium = [None] * len(self.graph)
         INIT_VAL = 10
         calcium[0] = INIT_VAL
 
-        parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
-
-        for child in [1, 2, 3, 4, 5]:
+        for child in parents.keys():
             calcium[child] = calcium[parents[child]] + np.random.randn() \
                 * np.sqrt(self.true_params['lambs'][
                     self.lambs_ids[(child, parents[child])]])
@@ -208,7 +205,12 @@ class Neuron:
 #   lambs[(c_j,c_i)] = 1
 
 if __name__ == '__main__':
-    neuron = Neuron()
+    graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
+    observed = [True, False, True, True, True, True]
+    true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
+    lambs_ids_groups = [[0, 1, 2], [2, 3, 4, 5]]
+    parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
+    neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
     # neuron.E_step()
     # print neuron.estimates
     # print neuron.calcium
