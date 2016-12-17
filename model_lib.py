@@ -123,6 +123,23 @@ class Neuron:
         # return (mu_m, var_m)
         return mu_m
 
+    def EM(self):
+        print("Ground Truth Calcium Levels")
+        print self.calcium
+        print("Calcium Level Estimates")
+        lastLL = None
+        newLL = None
+        while ((lastLL is None) or (abs(newLL - lastLL) > 1.0*10**(-5))):
+            #run E step and M step while we have not converged
+            self.E_step()
+            self.M_step()
+            lastLL = newLL
+            newLL = self.Log_Likelihood()
+            print neuron.estimates
+            print(newLL)
+        print("Ground Truth Calcium Levels")
+        print self.calcium
+
     def E_step(self):
         self.message_passing()
         self.estimates = [self.get_marginal(i) for
@@ -211,13 +228,16 @@ if __name__ == '__main__':
     lambs_ids_groups = [[0, 1, 2], [2, 3, 4, 5]]
     parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
     neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
-    # neuron.E_step()
-    # print neuron.estimates
-    # print neuron.calcium
-    # neuron.M_step()
-    # print neuron.params
-    # print neuron.true_params
-    print neuron.Log_Likelihood()
+    neuron.EM()
+    
+    #neuron.E_step()
+    #print neuron.estimates
+    #print neuron.calcium
+    #neuron.M_step()
+    #print neuron.params
+    #print neuron.true_params
+    #print neuron.Log_Likelihood()
+
 # a function to generate data
 # passes the observations to GBP() which will contain everything
 # GBP() will repeatedly call the E step (message passing) and M step
