@@ -17,6 +17,7 @@ class Neuron:
         self.messages = {}
         self.root = 0
         self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
+        # self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2], 'a_var': 0.1}
         # self.estimates = [None] * len(self.graph)
         self.estimates = self.calcium
 
@@ -124,9 +125,32 @@ class Neuron:
         # return (mu_m, var_m)
         return mu_m
 
+    def get_messages_excluding(self, node, exclude_node):
+        var_m = 0
+        mu_m = 0
+
+        for k in self.graph[node]:
+            if k != exclude_node:
+                messages_to_node = self.messages[(k, node)]
+                # update var and mean of message
+                var_m += 1. / messages_to_node[1]
+                mu_m += messages_to_node[0] / messages_to_node[1]
+
+        # only if source is observed do we add the var_y
+        if(self.observed[node]):
+            var_m += self.params['a']**2 / self.params['var_y']
+            mu_m += (self.data[node] - self.params['b']) * self.params['a'] \
+                / (self.params['var_y'])
+
+        var_m = 1. / var_m
+        mu_m = mu_m * var_m
+
+        # return (mu_m, var_m)
+        return mu_m 
+
     def EM(self):
         print("Ground Truth Calcium Levels")
-        print self.calcium
+        #print self.calcium
         print("Calcium Level Estimates")
         lastLL = None
         newLL = None
@@ -136,10 +160,10 @@ class Neuron:
             self.M_step()
             lastLL = newLL
             newLL = self.Log_Likelihood()
-            print neuron.estimates
-            print(newLL)
-        print("Ground Truth Calcium Levels")
-        print self.calcium
+            print "params: %s" % str(neuron.params)
+            print "log likelihood: %f" % newLL
+        # print("Ground Truth Calcium Levels")
+        # print self.calcium
 
     def E_step(self):
         self.message_passing()
@@ -162,6 +186,7 @@ class Neuron:
                           zip(self.estimates, self.data) if not np.isnan(y)])
 
         self.params['a'] = cov / var_est
+        # self.params['a'] = (cov /self.params['var_y']) / (1 / self.params['a_var'] + var_est / self.params['var_y'])
         self.params['b'] = Y_mean - self.params['a'] * C_mean
 
         # Update the observation variance
@@ -244,7 +269,7 @@ if __name__ == '__main__':
 
     graph, parents, lamb_group_ids = mod_gen.make_graph()
     observed = [True] * len(graph) 
-    true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
+    true_params = {'a':1, 'b':0, 'var_y':.1, 'lambs': [.1, .2]}
     neuron = Neuron(graph, observed, true_params, lamb_group_ids, parents)
     neuron.EM()
 
