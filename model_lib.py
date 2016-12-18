@@ -122,8 +122,8 @@ class Neuron:
         var_m = 1. / var_m
         mu_m = mu_m * var_m
 
-        # return (mu_m, var_m)
-        return mu_m
+        return (mu_m, var_m)
+        # return mu_m
 
     def get_messages_excluding(self, node, exclude_node):
         var_m = 0
@@ -143,10 +143,10 @@ class Neuron:
                 / (self.params['var_y'])
 
         var_m = 1. / var_m
-        mu_m = mu_m * var_m
+        # mu_m = mu_m * var_m
 
         # return (mu_m, var_m)
-        return mu_m 
+        return var_m 
 
     def EM(self):
         print("Ground Truth Calcium Levels")
@@ -167,22 +167,24 @@ class Neuron:
 
     def E_step(self):
         self.message_passing()
-        self.estimates = [self.get_marginal(i) for
+        self.estimates = [(self.get_marginal(i)) for
                           i in xrange(len(self.graph))]
 
     def M_step(self):
 
         # Update all parameter estimates
 
+
+
         # Update gain a and offset b by regression LSE
-        C_mean = np.mean([e for ie, e in enumerate(self.estimates) if
+        C_mean = np.mean([e[0] for ie, e in enumerate(self.estimates) if
                           not np.isnan(self.data[ie])])
         Y_mean = np.nanmean(self.data)
 
         # Exclude any nodes that were not observed
-        cov = np.sum([(C_mean - c) * (Y_mean - y) for c, y in
+        cov = np.sum([(C_mean - c[0]) * (Y_mean - y) for c, y in
                       zip(self.estimates, self.data) if not np.isnan(y)])
-        var_est = np.sum([(C_mean - c)**2 for c, y in
+        var_est = np.sum([(C_mean - c[0])**2 for c, y in
                           zip(self.estimates, self.data) if not np.isnan(y)])
 
         self.params['a'] = cov / var_est
@@ -190,11 +192,14 @@ class Neuron:
         self.params['b'] = Y_mean - self.params['a'] * C_mean
 
         # Update the observation variance
-        self.params['var_y'] = np.sum([(y - (self.params['a'] * c +
-                                       self.params['b']))**2 for c, y in
-                                       zip(self.estimates, self.data) if
+        # self.params['var_y'] = np.sum([(y - (self.params['a'] * c[0] +
+        #                                self.params['b']))**2 for c, y in
+        #                                zip(self.estimates, self.data) if
+        #                                not np.isnan(y)])
+        self.params['var_y'] = np.sum([y**2 - 2 * y * (self.params['a'] * c[0] + self.params['b'])
+                                       + self.params['a']**2 * (c[1] + c[0]**2) + self.params['b']
+                                       * (self.params['a'] + 1) for c, y in zip(self.estimates, self.data) if
                                        not np.isnan(y)])
-
         self.params['var_y'] /= np.sum(self.observed)
 
         # Update all of our smoothing parameters
@@ -204,8 +209,13 @@ class Neuron:
         for (node_i, node_j) in combinations(xrange(len(self.graph)), 2):
             try:
                 l_id = self.lambs_ids[(node_i, node_j)]
-                l_updates[l_id] += (self.estimates[node_i] -
-                                    self.estimates[node_j])**2
+                # l_updates[l_id] += (self.estimates[node_i] -
+                #                     self.estimates[node_j])**2
+                Ji = self.get_messages_excluding(node_i, node_j) / (self.get_messages_excluding(node_i, node_j) + self.params['sigma_y'])
+                E_prod = self.estimates[node_j][1] * Ji + self.estimates[node_i][0] * self.estimates[node_j][0]
+                l_updates[l_id] += self.estimates[node_i][1] + self.estimates[node_i][0]**2 \
+                                    -2 * E_prod + self.estimates[node_j][1] \
+                                    + self.estimates[node_j][0]**2
             except KeyError:
                 # Unconnected node pairs will not have a lambda id,
                 # just skip over these nodes
@@ -225,14 +235,14 @@ class Neuron:
         for i in xrange(len(self.data)):
             if self.observed[i]:
                 ll += norm.logpdf(self.data[i], loc=self.params['a'] *
-                                  self.estimates[i] + self.params['b'],
+                                  self.estimates[i][0] + self.params['b'],
                                   scale=np.sqrt(self.params['var_y']))
 
         # Add prob of Cs P(Ci, Cj)
         for (i, j) in combinations(xrange(len(self.graph)), 2):
             try:
                 l_id = self.lambs_ids[(i, j)]
-                ll += norm.logpdf(self.estimates[i] - self.estimates[j], loc=0,
+                ll += norm.logpdf(self.estimates[i][0] - self.estimates[j][0], loc=0,
                                   scale=np.sqrt(self.params['lambs'][l_id]))
             except KeyError:
                 pass
