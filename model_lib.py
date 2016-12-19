@@ -16,10 +16,10 @@ class Neuron:
 
         self.messages = {}
         self.root = 0
-        self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2]}
+        self.params = {'a': 1, 'b': 0, 'var_y': .4, 'lambs': [.4, .4]}
         # self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2], 'a_var': 0.1}
         # self.estimates = [None] * len(self.graph)
-        self.estimates = self.calcium
+        self.estimates = [None] * len(self.calcium)
 
     def assign_lambdas(self, groups):
         lambs_ids = {}
@@ -146,14 +146,15 @@ class Neuron:
         # mu_m = mu_m * var_m
 
         # return (mu_m, var_m)
-        return var_m 
+        return var_m
 
     def EM(self):
         print("Ground Truth Calcium Levels")
-        #print self.calcium
+        # print self.calcium
         print("Calcium Level Estimates")
         lastLL = None
         newLL = None
+        # set_trace()
         while ((lastLL is None) or (abs(newLL - lastLL) > 1.0 * 10**(-5))):
             # run E step and M step while we have not converged
             self.E_step()
@@ -185,9 +186,12 @@ class Neuron:
         var_est = np.sum([(C_mean - c[0])**2 + c[1] for c, y in
                           zip(self.estimates, self.data) if not np.isnan(y)])
 
-        self.params['a'] = cov / var_est
+        # self.params['a'] = cov / var_est
         # If we want to regularize a, use the expression below
-        # self.params['a'] = (cov /self.params['var_y']) / (1 / self.params['a_var'] + var_est / self.params['var_y'])
+        self.params['a'] = \
+            (self.true_params['a_mean'] / self.true_params['a_var'] +
+                cov / self.params['var_y']) / \
+            (1 / self.true_params['a_var'] + var_est / self.params['var_y'])
         self.params['b'] = Y_mean - self.params['a'] * C_mean
 
         # Update the observation variance
@@ -251,14 +255,6 @@ class Neuron:
                 pass
 
         return ll
-# get index for obsereved variable
-# def _y(c):
-#   return c+n_nodes
-
-# def _make_lambda(c_i,c_j):
-#   #make the lambdas symmetric for both message directions
-#   lambs[(c_i,c_j)] = 1
-#   lambs[(c_j,c_i)] = 1
 
 if __name__ == '__main__':
     # graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
@@ -279,25 +275,11 @@ if __name__ == '__main__':
     # neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
     # neuron.EM()
 
-
     graph, parents, lamb_group_ids = mod_gen.make_graph()
-    observed = [True] * len(graph) 
-    true_params = {'a':1, 'b':0, 'var_y':.1, 'lambs': [.1, .2]}
+    observed = [True] * len(graph)
+    true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2], 'a_var': .1, 'a_mean': 1}
     neuron = Neuron(graph, observed, true_params, lamb_group_ids, parents)
     neuron.EM()
+    # set_trace()
 
-    #neuron.E_step()
-    #print neuron.estimates
-    #print neuron.calcium
-    #neuron.M_step()
-    #print neuron.params
-    #print neuron.true_params
-    #print neuron.Log_Likelihood()
-
-# a function to generate data
-# passes the observations to GBP() which will contain everything
-# GBP() will repeatedly call the E step (message passing) and M step
-# E step will spit out the marginals (estimates of Cs) and lambs
-# pass these marginals into M step
-# calculate ELBO
-# after loop is done, infer missing data
+    # Infer Missing values
