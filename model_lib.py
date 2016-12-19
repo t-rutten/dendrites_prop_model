@@ -3,7 +3,7 @@ from scipy.stats import norm
 from itertools import combinations
 import simulated_model_gen as mod_gen
 
-#from pudb import set_trace
+from pudb import set_trace
 
 
 class Neuron:
@@ -154,14 +154,15 @@ class Neuron:
         print("Calcium Level Estimates")
         lastLL = None
         newLL = None
-        while ((lastLL is None) or (abs(newLL - lastLL) > 1.0*10**(-5))):
-            #run E step and M step while we have not converged
+        while ((lastLL is None) or (abs(newLL - lastLL) > 1.0 * 10**(-5))):
+            # run E step and M step while we have not converged
             self.E_step()
             self.M_step()
             lastLL = newLL
             newLL = self.Log_Likelihood()
             print "params: %s" % str(neuron.params)
             print "log likelihood: %f" % newLL
+            print "SSE: " + str(np.sum([(c - e[0])**2 for c, e in zip(self.calcium, self.estimates)]))
         # print("Ground Truth Calcium Levels")
         # print self.calcium
 
@@ -173,9 +174,6 @@ class Neuron:
     def M_step(self):
 
         # Update all parameter estimates
-
-
-
         # Update gain a and offset b by regression LSE
         C_mean = np.mean([e[0] for ie, e in enumerate(self.estimates) if
                           not np.isnan(self.data[ie])])
@@ -184,22 +182,23 @@ class Neuron:
         # Exclude any nodes that were not observed
         cov = np.sum([(C_mean - c[0]) * (Y_mean - y) for c, y in
                       zip(self.estimates, self.data) if not np.isnan(y)])
-        var_est = np.sum([(C_mean - c[0])**2 for c, y in
+        var_est = np.sum([(C_mean - c[0])**2 + c[1] for c, y in
                           zip(self.estimates, self.data) if not np.isnan(y)])
 
         self.params['a'] = cov / var_est
+        # If we want to regularize a, use the expression below
         # self.params['a'] = (cov /self.params['var_y']) / (1 / self.params['a_var'] + var_est / self.params['var_y'])
         self.params['b'] = Y_mean - self.params['a'] * C_mean
 
         # Update the observation variance
-        # self.params['var_y'] = np.sum([(y - (self.params['a'] * c[0] +
-        #                                self.params['b']))**2 for c, y in
-        #                                zip(self.estimates, self.data) if
-        #                                not np.isnan(y)])
-        self.params['var_y'] = np.sum([y**2 - 2 * y * (self.params['a'] * c[0] + self.params['b'])
-                                       + self.params['a']**2 * (c[1] + c[0]**2) + self.params['b']
-                                       * (self.params['a'] + 1) for c, y in zip(self.estimates, self.data) if
-                                       not np.isnan(y)])
+        self.params['var_y'] = np.sum([y**2 - 2 * y * (self.params['a'] *
+                                       c[0] + self.params['b']) +
+                                       self.params['a']**2 * (c[1] + c[0]**2) +
+                                       self.params['b'] ** 2 + 2 *
+                                       self.params['a'] * self.params['b'] *
+                                       c[0] for c, y in zip(self.estimates,
+                                       self.data) if not np.isnan(y)])
+
         self.params['var_y'] /= np.sum(self.observed)
 
         # Update all of our smoothing parameters
@@ -211,11 +210,15 @@ class Neuron:
                 l_id = self.lambs_ids[(node_i, node_j)]
                 # l_updates[l_id] += (self.estimates[node_i] -
                 #                     self.estimates[node_j])**2
-                Ji = self.get_messages_excluding(node_i, node_j) / (self.get_messages_excluding(node_i, node_j) + self.params['sigma_y'])
-                E_prod = self.estimates[node_j][1] * Ji + self.estimates[node_i][0] * self.estimates[node_j][0]
-                l_updates[l_id] += self.estimates[node_i][1] + self.estimates[node_i][0]**2 \
-                                    -2 * E_prod + self.estimates[node_j][1] \
-                                    + self.estimates[node_j][0]**2
+                Ji = self.get_messages_excluding(node_i, node_j) / \
+                    (self.get_messages_excluding(node_i, node_j) +
+                        self.params['var_y'])
+                E_prod = self.estimates[node_j][1] * Ji + \
+                    self.estimates[node_i][0] * self.estimates[node_j][0]
+                l_updates[l_id] += self.estimates[node_i][1] + \
+                    self.estimates[node_i][0]**2 -\
+                    2 * E_prod + self.estimates[node_j][1] + \
+                    self.estimates[node_j][0]**2
             except KeyError:
                 # Unconnected node pairs will not have a lambda id,
                 # just skip over these nodes
@@ -258,23 +261,23 @@ class Neuron:
 #   lambs[(c_j,c_i)] = 1
 
 if __name__ == '__main__':
-    graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
-    observed = [True, False, True, True, True, True]
-    true_params = {'a': 1, 'b': 0, 'var_y': .01, 'lambs': [1, 1]}
-    lambs_ids_groups = [[0, 1, 2], [2, 3, 4, 5]]
-    parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
-    neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
-    neuron.EM()
+    # graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
+    # observed = [True, False, True, True, True, True]
+    # true_params = {'a': 1, 'b': 0, 'var_y': .01, 'lambs': [1, 1]}
+    # lambs_ids_groups = [[0, 1, 2], [2, 3, 4, 5]]
+    # parents = {1: 0, 2: 1, 3: 2, 4: 2, 5: 4}
+    # neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
+    # neuron.EM()
 
-    print("\n\n\n\n\n\n")
+    # print("\n\n\n\n\n\n")
 
-    graph = {0:[1], 1:[0,2], 2:[1,3], 3:[2,4,7,9], 4:[3,5], 5:[4,6], 6:[5], 7:[3,8], 8:[7], 9:[3,10], 10:[9,11], 11:[10]}
-    observed = [True, True, False, True, False, True, True, False, True, True, False, True]
-    true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
-    lambs_ids_groups = [[0, 1, 2, 3], [3, 4, 5, 6, 7, 8, 9, 10, 11]]
-    parents = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:3, 8:7, 9:3, 10:9, 11:10}
-    neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
-    neuron.EM()
+    # graph = {0:[1], 1:[0,2], 2:[1,3], 3:[2,4,7,9], 4:[3,5], 5:[4,6], 6:[5], 7:[3,8], 8:[7], 9:[3,10], 10:[9,11], 11:[10]}
+    # observed = [True, True, False, True, False, True, True, False, True, True, False, True]
+    # true_params = {'a':1, 'b':0, 'var_y':.01, 'lambs': [.1, .2]}
+    # lambs_ids_groups = [[0, 1, 2, 3], [3, 4, 5, 6, 7, 8, 9, 10, 11]]
+    # parents = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:3, 8:7, 9:3, 10:9, 11:10}
+    # neuron = Neuron(graph, observed, true_params, lambs_ids_groups, parents)
+    # neuron.EM()
 
 
     graph, parents, lamb_group_ids = mod_gen.make_graph()
