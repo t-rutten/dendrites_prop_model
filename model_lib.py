@@ -20,8 +20,6 @@ class Neuron:
         self.messages = {}
         self.root = 0
         self.params = {'a': 1., 'b': 0., 'var_y': .4, 'lambs': [.4, .4]}
-        # self.params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2], 'a_var': 0.1}
-        # self.estimates = [None] * len(self.graph)
         self.estimates = [None] * len(self.calcium)
 
     def assign_lambdas(self, groups):
@@ -146,15 +144,10 @@ class Neuron:
                 / (self.params['var_y'])
 
         var_m = 1. / var_m
-        # mu_m = mu_m * var_m
 
-        # return (mu_m, var_m)
         return var_m
 
     def EM(self):
-        # print("Ground Truth Calcium Levels")
-        # print self.calcium
-        # print("Calcium Level Estimates")
         lastLL = None
         newLL = None
         # set_trace()
@@ -178,7 +171,8 @@ class Neuron:
             lastLL = newLL
             newLL = self.Log_Likelihood()
             
-            sse = np.sum([(c - e[0])**2 for c, e in zip(self.calcium, self.estimates)])/len(self.calcium)
+            sse = np.sum([(c - e[0])**2 for c, e in zip(self.calcium, self.estimates)])
+            msse = sse/len(self.calcium)
 
             #add history of the parameters
             a = self.params['a']
@@ -193,17 +187,17 @@ class Neuron:
             tracker['lamb2'].append(lamb2)
             tracker['var_y'].append(var_y)
 
-            sse_trials.append(sse)
+            sse_trials.append(msse)
             ll_trials.append(newLL)
             
             if sse < best_sse_value:
-                best_sse_value = sse
+                best_sse_value = msse
                 best_sse_iteration = counter
 
             if counter % 100 == 0:
                 print "params: %s" % str(self.params)
                 print "log likelihood: %f" % newLL
-                print "SSE: " + str(np.sum([(c - e[0])**2 for c, e in zip(self.calcium, self.estimates)]))
+                print "SSE: " + str(sse)
             
             counter += 1
         
@@ -213,9 +207,6 @@ class Neuron:
         print "Best SSE value: %f at iteration %d" % (best_sse_value,best_sse_iteration)
         
         return ll_trials, sse_trials, best_sse_value, tracker
-
-        # print("Ground Truth Calcium Levels")
-        # print self.calcium
 
     def E_step(self):
         self.message_passing()
@@ -236,7 +227,6 @@ class Neuron:
         var_est = np.sum([(C_mean - c[0])**2 + c[1] for c, y in
                           zip(self.estimates, self.data) if not np.isnan(y)])
 
-        # self.params['a'] = cov / var_est
         # If we want to regularize a, use the expression below
         self.params['a'] = \
             (self.true_params['a_mean'] / self.true_params['a_var'] +
@@ -257,7 +247,6 @@ class Neuron:
 
         # Update all of our smoothing parameters
         l_updates = [0] * len(self.params['lambs'])
-        # id_counts = [0] * len(self.params['lambs'])
 
         for (node_i, node_j) in combinations(xrange(len(self.graph)), 2):
             try:
@@ -267,7 +256,6 @@ class Neuron:
                 Ji = self.get_messages_excluding(node_i, node_j) / \
                     (self.get_messages_excluding(node_i, node_j) +
                         self.params['lambs'][l_id])
-                        #lambs vs var y
                 E_prod = self.estimates[node_j][1] * Ji + \
                     self.estimates[node_i][0] * self.estimates[node_j][0]
                 l_updates[l_id] += self.estimates[node_i][1] + \
@@ -405,7 +393,8 @@ def run_tests_gpu(big_graph = False):
         a_size=300
         b_size=200
 
-    graph, parents, lamb_group_ids = mod_gen.make_graph(apical_size=a_size, basal_size=b_size)
+    graph, parents, lamb_group_ids = mod_gen.make_graph(apical_size=a_size, 
+        basal_size=b_size)
 
     observed = [True] * len(graph)
     true_params = {'a': 1, 'b': 0, 'var_y': .1, 'lambs': [.1, .2], 'a_var': .1, 'a_mean': 1}
@@ -449,6 +438,7 @@ def make_plots(pick):
 
 
 if __name__ == '__main__':
+    pass
     # graph = {0: [1], 1: [0, 2], 2: [1, 3, 4], 3: [2], 4: [2, 5], 5: [4]}
     # observed = [True, False, True, True, True, True]
     # true_params = {'a': 1, 'b': 0, 'var_y': .01, 'lambs': [1, 1]}
@@ -475,7 +465,7 @@ if __name__ == '__main__':
     # neuron = Neuron(graph, observed, true_params, lamb_group_ids, parents)
     # neuron.EM()
 
-    run_tests()
+    # run_tests()
     # run_tests(big_graph=True)
 
     # run_tests_gpu(big_graph=True)
