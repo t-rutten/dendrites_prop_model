@@ -37,7 +37,7 @@ def make_apical(graph, parents, num_nodes_bounds=[50,55]):
 		#add current node to nums_to_nodes_map
 		# nums_to_nodes_map[str(i)] = Node(str(i))
 
-def make_dendritic(graph, parents, num_branches_bounds=[2,3], branch_size_bounds=[20,30]):
+def make_basal(graph, parents, num_branches_bounds=[2,3], branch_size_bounds=[20,30]):
 	'''
 	generates dendritic branches
 	'''
@@ -93,12 +93,12 @@ def make_two_lamb_groups(soma,graph):
 	return [range(0,soma+1),range(soma,len(graph))]
 
 
-def make_graph():
+def make_graph(apical_size=20, basal_size=10):
 	graph = {}
 	parents = {}
 
-	soma_node = make_apical(graph,parents)
-	make_dendritic(graph,parents)
+	soma_node = make_apical(graph,parents, num_nodes_bounds=[apical_size,apical_size+10])
+	make_basal(graph,parents,branch_size_bounds=[basal_size,basal_size+10])
 	lamb_groups = make_two_lamb_groups(soma_node,graph)
 
 
